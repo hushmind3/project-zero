@@ -19,7 +19,6 @@
  * reads/writes the same config the chat PTY was launched from.
  */
 
-import { Select, SelectOption } from "@nous-research/ui/ui/components/select";
 import { Brain } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -52,6 +51,7 @@ export function ReasoningPicker({
   const [effort, setEffort] = useState("medium");
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const lastFetchKeyRef = useRef("");
 
   useEffect(() => {
@@ -75,6 +75,7 @@ export function ReasoningPicker({
     (next: string) => {
       if (!VALID_EFFORTS.has(next) || next === effort) return;
       const prev = effort;
+      setError("");
       setEffort(next); // optimistic
       setSaving(true);
       // Sparse patch: PUT /api/config deep-merges onto disk, so sending only
@@ -88,6 +89,7 @@ export function ReasoningPicker({
         })
         .catch(() => {
           setEffort(prev); // revert on failure
+          setError("Could not save reasoning effort. Try again.");
         })
         .finally(() => setSaving(false));
     },
@@ -95,23 +97,30 @@ export function ReasoningPicker({
   );
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-xs">
+    <fieldset className="min-w-0 px-3 py-2 text-xs" disabled={!loaded || saving}>
+      <legend className="sr-only">Reasoning effort</legend>
       <div className="flex items-center gap-1.5 text-text-tertiary">
         <Brain className="h-3.5 w-3.5" />
         <span className="text-display tracking-wider">reasoning</span>
       </div>
-      <Select
-        className="ml-auto min-w-0"
-        disabled={!loaded || saving}
-        onValueChange={onSelect}
-        value={effort}
-      >
+      <div className="mt-2 grid grid-cols-2 gap-1" role="group" aria-label="Reasoning effort">
         {EFFORT_OPTIONS.map((opt) => (
-          <SelectOption key={opt.value} value={opt.value}>
+          <button
+            key={opt.value}
+            type="button"
+            aria-pressed={effort === opt.value}
+            onClick={() => onSelect(opt.value)}
+            className={`border px-2 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 ${
+              effort === opt.value
+                ? "border-primary bg-primary/10 text-text-primary"
+                : "border-border text-text-secondary hover:bg-primary/5"
+            }`}
+          >
             {opt.label}
-          </SelectOption>
+          </button>
         ))}
-      </Select>
-    </div>
+      </div>
+      {error && <p className="mt-2 text-destructive" role="alert">{error}</p>}
+    </fieldset>
   );
 }
